@@ -5,10 +5,12 @@ import re
 import datetime as dt
 from time import sleep
 
+#my_branch 
+
 class Scraper:
     def __init__(self):
-        pass 
-    
+        pass
+
     def request(self):
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
