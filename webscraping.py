@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import sys
 import requests
 import json
 #import pandas as pd
@@ -40,10 +42,38 @@ class Scraper:
         pass
 
     def run(self):
-        response = self.request()
-        return response
+        self.response = self.request()
+        return self.response
+
+    def output_to_a_file(self, file_name:str):
+        standard_stdout = sys.stdout
+        new_output_file = open(file_name, 'w')
+        sys.stdout = new_output_file
+
+        #print(self.run())
+
+        print(self.run()['Results'])
+
+        sys.stdout = standard_stdout
+        new_output_file.close()
 
 scraper = Scraper()
-print(scraper.run())
+
+results = scraper.run()['Results']
+
+for result in results:
+    print(result['Make_ID'])
+
+for result in results:
+    print(result['Make_Name'])
+
+
+
+
+
+
+    
+
+
 
 
