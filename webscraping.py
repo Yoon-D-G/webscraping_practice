@@ -8,11 +8,11 @@ from time import sleep
 
 class Scraper:
     def __init__(self):
-        self.total_attempts = 0
+        self.total_attempts = 1
 
     def check_total_attempts(self):
         print(f'Total attempts = {self.total_attempts}')
-        if self.total_attempts == 6:
+        if self.total_attempts == 10:
             print('Too many attempts, there will be a 20 seconds pause before the next attempt')
             sleep(5)
             self.total_attempts = 0
@@ -40,8 +40,7 @@ class Scraper:
         while True: 
             self.check_total_attempts()
             try:
-                response = requests.get('https://vpc.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers, params=params)
-                print(response.status_code)
+                response = requests.get('https://vpic.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers, params=params)
                 if response.status_code == 200:
                     break
             except Exception as err:
@@ -83,7 +82,7 @@ class Scraper:
         responses = []
         counter = 0
         for make in all_makes:
-            if counter == 5:
+            if counter == 11:
                 break
             response = self.request('getmodelsformake/{}'.format(make['Make_Name']))
             process_response = self.process(response)
@@ -102,3 +101,6 @@ if __name__ == '__main__':
                 print(response)
         except ConnectionError as err:
             print(err)
+            continue
+        else:
+            break
