@@ -1,15 +1,64 @@
+from json import JSONDecodeError
+
 import requests
 import json
 import pandas as pd
-import re
-import datetime as dt
-from time import sleep
+from time import sleep, time
+import pickle as pickle
+
 
 class Scraper:
+    class Cache:
+        def __init__(self, persist):
+            self.__persist__ = persist
+            self.__inner_cache__ = {}
+            if self.__persist__:
+                self.__inner_cache__ = self.__deserialize__()
+
+        def __serialize__(self):
+            with open(".cache", "wb") as cached_dictionary:
+                pickle.dump(self.__inner_cache__, file=cached_dictionary)
+
+        def __deserialize__(self):
+            try:
+                with open(".cache", "rb") as cached_dictionary:
+                    try:
+                        return pickle.load(file=cached_dictionary)
+                    except EOFError:
+                        return {}
+            except FileNotFoundError:
+                with open(".cache", "xb"):
+                    self.__deserialize__()
+
+        def cache_value(self, key, value):
+            if key in self.__inner_cache__:
+                return self.__inner_cache__[key]
+            self.__inner_cache__[key] = value
+
+            if self.__persist__:
+                self.__serialize__()
+
+            return value
+
+        def get_value(self, key):
+            return self.__inner_cache__[key]
+
+        def get_cache(self):
+            if self.__inner_cache__:
+                return self.__inner_cache__
+            else:
+                return {}
+
     def __init__(self):
-        pass 
-    
-    def request(self, endpoint):
+        self.cache = self.Cache(True)
+
+    def request(self, endpoint, retry_limit, timeout, cache):
+        time_start = time()
+        if endpoint in self.cache.get_cache():
+            time_end = time()
+            print(f"Cached request took {round(time_end - time_start, 5)}s for endpoint: {endpoint}")
+            return self.cache.get_value(endpoint)
+
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -28,17 +77,24 @@ class Scraper:
             ('format', 'json'),
         )
 
-        response = requests.get('https://vpic.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers, params=params)
-        #protect this request
-        #one scenario for 200 response (everything went fine)
-        #a different scenario for any other request code (eg 404, 503) - 10 second cooldown before another request then try again.
-        #try this 5 times and then give up and move on to the next request
-        #extension - keep track of how many requests have failed in a row. If there is a certain threshold (eg 5 requests in a row)
-        #then stop doing requests. persistent or non-persistent counter. 
+        response = requests.get('https://vpic.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers,
+                                params=params)
+        time_end = time()
+        print(f"Request took {round(time_end - time_start, 5)}s for endpoint: {endpoint}")
 
-        response = json.loads(response.text)
-
-        return response['Results']
+        if response.status_code != 200:
+            if retry_limit != 0:
+                sleep(timeout)
+                return self.request(endpoint, retry_limit - 1, timeout, False)
+            else:
+                return {}
+        try:
+            json_string = json.loads(response.text)['Results']
+            if json_string and cache:
+                self.cache.cache_value(endpoint, json_string)
+            return json_string
+        except JSONDecodeError as ex:
+            return {}
 
     def process(self, results: list):
         output = []
@@ -54,27 +110,17 @@ class Scraper:
         return output_df
 
     def run(self):
-        all_makes = self.request('getallmakes')
+        all_makes = self.request(endpoint='getallmakes', retry_limit=2, timeout=2, cache=False)
         responses = []
-        counter = 0
         for make in all_makes:
-            if counter == 20:
-                break
-            response = self.request('getmodelsformake/{}'.format(make['Make_Name']))
-            process_response = self.process(response)
-            responses.append(process_response)
-            counter += 1
+            response = self.request(endpoint='getmodelsformake/{}'.format(make['Make_Name']), retry_limit=2, timeout=2, cache=True)
+            if response:
+                process_response = self.process(response)
+                responses.append(process_response)
         return responses
 
-    def format_line(self, list):
-        return 'ID:{id} Make:{make}'.format(id=list['Make_ID'], make=list['Make_Name'])
 
 if __name__ == '__main__':
     scraper = Scraper()
     for response in scraper.run():
         print(response)
-
-
-
-
-
