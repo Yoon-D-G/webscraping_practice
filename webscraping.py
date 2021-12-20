@@ -9,7 +9,7 @@ import tkinter as tk
 
 class Scraper:
     def __init__(self):
-        self.cache_name = 'cache4'
+        self.cache_name = 'cache5'
         self.cache_dictionary = {}
 
     def check_cache(self, Make_ID):
@@ -96,31 +96,51 @@ class Scraper:
     def format_line(self, list):
         return 'ID:{id} Make:{make}'.format(id=list['Make_ID'], make=list['Make_Name'])
 
+    def getallmakes(self):
+        makes = []
+        for make in self.request('getallmakes')[:20]:
+            makes.append(make['Make_Name'])
+        return makes
+
+    def get_models_for_make(self, make):
+        response = self.request('getmodelsformake/{}'.format(make))
+        return response
+
+
+
 if __name__ == '__main__':
     scraper = Scraper()
     for response in scraper.run():
         print(response)
+    makes = scraper.getallmakes()
+ 
+    window = tk.Tk()
 
-    root = tk.Tk()
+    window.geometry('300x400')
 
-    root.title('Makes and Models from US department of transport')
+    var = tk.StringVar()
+    
+    def callback(selection):
+        var.get()
+        list_of_models = []
+        makes = scraper.get_models_for_make(selection)
+        for make in makes:
+            list_of_models.append(make['Model_Name'])
+        listbox = tk.Listbox(window)
+        for num, model in enumerate(list_of_models, 1):
+            listbox.insert(num, model)
+        listbox.pack()
 
-    canvas = tk.Canvas(root, height=500, width=600, bg='#577955')
-    canvas.pack()
+    menu = tk.OptionMenu(window, var, *makes, command=callback)
 
-    frame = tk.Frame(root, bg='#CBDEA6')
-    frame.place(relx=0.1, rely=0.1, relwidth=0.8, relheight=0.8)
+    print(var)
+    menu.config(width=90)
+    menu.pack()
 
-    label = tk.Label(frame, text='this is a label', bg='yellow')
+    choice = var.get()
+    print(choice)
 
-    button1 = tk.Button(frame, text='All Makes', bg='#424242', fg='silver', justify='left')
-    button2 = tk.Button(frame, text='All Models', bg='#424242', fg='silver', justify='right')
+    window.mainloop()
 
-    button1.pack()
-    button2.pack()
-
-    menu = tk.OptionMenu(button1, var, Make_)
-
-    root.mainloop()
 
 
