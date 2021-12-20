@@ -1,22 +1,39 @@
-
 import requests
 import json
 import pandas as pd
 import re
 import datetime as dt
 from time import sleep
+import pickle
+import os
 
 class Scraper:
     def __init__(self):
-        self.total_attempts = 1
+        self.cache_counter = 0
+        self.cache_name = 'cache3'
+        self.cache_dictionary = {}
 
-    def check_total_attempts(self):
-        print(f'Total attempts = {self.total_attempts}')
-        if self.total_attempts == 10:
-            print('Too many attempts, there will be a 20 seconds pause before the next attempt')
-            sleep(5)
-            self.total_attempts = 0
-    
+    def check_cache(self, Make_ID):
+        unpickled = None
+        if os.path.isfile(self.cache_name):
+            read_file = open(self.cache_name, 'rb')
+            unpickled = pickle.load(read_file)
+        if unpickled:
+            if Make_ID in unpickled and unpickled[Make_ID]:
+                self.cache_counter += 1
+                return True
+        else:
+            self.cache_counter += 1
+            return False
+
+    def create_cache(self):
+        open_file = open(self.cache_name, 'wb')
+        pickle.dump(self.cache_dictionary, open_file)
+
+    def get_cache(self):
+        read_file = open(self.cache_name, 'rb')
+        return pickle.load(read_file)  
+
     def request(self, endpoint):
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
@@ -36,30 +53,13 @@ class Scraper:
             ('format', 'json'),
         )
 
-        counter = 1
-        while True: 
-            self.check_total_attempts()
-            try:
-                response = requests.get('https://vpic.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers, params=params)
-                if response.status_code == 200:
-                    break
-            except Exception as err:
-                print(f'Attempt {counter}')
-                print(f'Exception caught --> {err}')
-            finally:
-                counter += 1
-                self.total_attempts += 1
-                if counter == 4:
-                    raise ConnectionError ('could not connect to the website')
-                sleep(3)
-
+        response = requests.get('https://vpic.nhtsa.dot.gov/api/vehicles/{}'.format(endpoint), headers=headers, params=params)
         #protect this request
         #one scenario for 200 response (everything went fine)
         #a different scenario for any other request code (eg 404, 503) - 10 second cooldown before another request then try again.
         #try this 5 times and then give up and move on to the next request
         #extension - keep track of how many requests have failed in a row. If there is a certain threshold (eg 5 requests in a row)
         #then stop doing requests. persistent or non-persistent counter. 
- 
         response = json.loads(response.text)
 
         return response['Results']
@@ -82,9 +82,15 @@ class Scraper:
         responses = []
         counter = 0
         for make in all_makes:
-            if counter == 11:
+            if counter == 5:
                 break
-            response = self.request('getmodelsformake/{}'.format(make['Make_Name']))
+            Make_ID = make['Make_ID']
+            if not self.check_cache(Make_ID):
+                response = self.request('getmodelsformake/{}'.format(make['Make_Name']))
+                self.cache_dictionary[Make_ID] = response
+                self.create_cache()
+            else:
+                response = self.get_cache()[Make_ID]
             process_response = self.process(response)
             responses.append(process_response)
             counter += 1
@@ -95,12 +101,5 @@ class Scraper:
 
 if __name__ == '__main__':
     scraper = Scraper()
-    while True:
-        try:
-            for response in scraper.run():
-                print(response)
-        except ConnectionError as err:
-            print(err)
-            continue
-        else:
-            break
+    for response in scraper.run():
+        print(response)
