@@ -1,7 +1,6 @@
 import requests
 import json
 import pandas as pd
-import re
 import datetime as dt
 from time import sleep
 import pickle
@@ -9,8 +8,7 @@ import os
 
 class Scraper:
     def __init__(self):
-        self.cache_counter = 0
-        self.cache_name = 'cache3'
+        self.cache_name = 'cache4'
         self.cache_dictionary = {}
 
     def check_cache(self, Make_ID):
@@ -20,10 +18,8 @@ class Scraper:
             unpickled = pickle.load(read_file)
         if unpickled:
             if Make_ID in unpickled and unpickled[Make_ID]:
-                self.cache_counter += 1
                 return True
         else:
-            self.cache_counter += 1
             return False
 
     def create_cache(self):
