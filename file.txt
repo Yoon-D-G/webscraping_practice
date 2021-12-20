@@ -1,0 +1,4 @@
+Count
+Message
+SearchCriteria
+Results

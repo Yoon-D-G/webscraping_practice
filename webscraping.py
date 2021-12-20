@@ -5,6 +5,7 @@ import datetime as dt
 from time import sleep
 import pickle
 import os
+import tkinter as tk
 
 class Scraper:
     def __init__(self):
@@ -99,3 +100,27 @@ if __name__ == '__main__':
     scraper = Scraper()
     for response in scraper.run():
         print(response)
+
+    root = tk.Tk()
+
+    root.title('Makes and Models from US department of transport')
+
+    canvas = tk.Canvas(root, height=500, width=600, bg='#577955')
+    canvas.pack()
+
+    frame = tk.Frame(root, bg='#CBDEA6')
+    frame.place(relx=0.1, rely=0.1, relwidth=0.8, relheight=0.8)
+
+    label = tk.Label(frame, text='this is a label', bg='yellow')
+
+    button1 = tk.Button(frame, text='All Makes', bg='#424242', fg='silver', justify='left')
+    button2 = tk.Button(frame, text='All Models', bg='#424242', fg='silver', justify='right')
+
+    button1.pack()
+    button2.pack()
+
+    menu = tk.OptionMenu(button1, var, Make_)
+
+    root.mainloop()
+
+
