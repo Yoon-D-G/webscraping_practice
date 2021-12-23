@@ -28,7 +28,7 @@ class Scraper:
                         return {}
             except FileNotFoundError:
                 with open(".cache", "xb"):
-                    self.__deserialize__()
+                    return {}
 
         def cache_value(self, key, value):
             if key in self.__inner_cache__:
@@ -106,21 +106,17 @@ class Scraper:
                 'Model ID': result.get('Model_ID')
             }
             output.append(result_dict)
-        output_df = pd.DataFrame(output)
-        return output_df
+        return output
 
-    def run(self):
-        all_makes = self.request(endpoint='getallmakes', retry_limit=2, timeout=2, cache=False)
-        responses = []
-        for make in all_makes:
-            response = self.request(endpoint='getmodelsformake/{}'.format(make['Make_Name']), retry_limit=2, timeout=2, cache=True)
-            if response:
-                process_response = self.process(response)
-                responses.append(process_response)
-        return responses
+    def get_makes(self):
+        return self.request(endpoint='getallmakes', retry_limit=2, timeout=2, cache=False)
+
+    def get_models(self, make_value: str):
+        return self.request(endpoint='getmodelsformake/{}'.format(make_value), retry_limit=2, timeout=2, cache=True)
 
 
 if __name__ == '__main__':
     scraper = Scraper()
-    for response in scraper.run():
-        print(response)
+    all_makes = scraper.get_makes()
+    for make in all_makes:
+        print(pd.DataFrame(scraper.get_models(make['Make_Name'])))
